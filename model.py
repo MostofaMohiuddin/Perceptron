@@ -1,14 +1,15 @@
 import numpy as np
 from collections import Counter
 from sklearn.metrics import accuracy_score
+
 SEED = 42
 np.random.seed(SEED)
 
 
 class Model:
     test_data = []
-    test_X = []
-    test_Y = []
+    test_X = None
+    test_Y = None
     train_data = []
     train_X = None
     train_Y = None
@@ -47,20 +48,25 @@ class Model:
         y = np_data[:, -1].reshape(-1, 1).astype(int)
         return data, x, y
 
-    def test(self):
+    def test(self, is_train=False):
         if self.W is None:
             print('Train Model First')
             return
+        x = self.test_X if not is_train else self.train_X
+        y = self.test_Y if not is_train else self.train_Y
         # value > 0 -> replacing with the class which represents y greater than 0
-        y_pred = np.where(np.matmul(self.test_X, self.W) > 0, 1 if self.classes[1] > 0 else 2,
+        y_pred = np.where(np.matmul(x, self.W) > 0, 1 if self.classes[1] > 0 else 2,
                           1 if self.classes[1] < 0 else 2)
-
+        f = open('output.txt', 'w')
         count = 0
         for i in range(self.data_amount):
-            if y_pred[i][0] != self.test_Y[i][0]:
+            if y_pred[i][0] != y[i][0]:
                 count += 1
-        print('error', count)
-        print('Accuracy: ' , accuracy_score(self.test_Y, y_pred))
+                f.write('smple_no: {}\tfeature_values: {}\tactual_class: {}\tpredicted_class: {}\n'
+                        .format(i, [x[i][j] for j in range(1, len(x[i]))], y[i][0], y_pred[i][0]))
+        accuracy = accuracy_score(y, y_pred)
+        f.write('total_misclassified: {}\naccuracy:{}\n'.format(count, accuracy * 100))
+        return accuracy, count
 
     def basic_perceptron(self, learning_rate=0.001):
         self.W = np.random.rand(self.feature_amount + 1, 1)  # assigning random weight
@@ -77,3 +83,46 @@ class Model:
                     misclassified = True
 
             self.W -= learning_rate * grad.T
+
+    def rnp(self, learning_rate=1):
+        self.W = np.zeros((self.feature_amount + 1, 1))  # assigning zero weight
+
+        for i in range(self.data_amount * 10):
+            misclassified = False
+            for j in range(self.data_amount):
+                xw = np.matmul(self.train_X[j], self.W)
+                y_class = self.classes[self.train_Y[j][0]]
+                if y_class == -1 and xw >= 0:
+                    self.W -= learning_rate * np.array(self.train_X[j]).reshape(-1, 1)
+                    misclassified = True
+                elif y_class == 1 and xw <= 0:
+                    self.W += learning_rate * np.array(self.train_X[j]).reshape(-1, 1)
+                    misclassified = True
+            if not misclassified:
+                break
+
+    def pocket(self, learning_rate=1):
+        temp_w = np.zeros((self.feature_amount + 1, 1))  # assigning zero weight
+
+        correct_classify = 0
+        for i in range(self.data_amount * 3):
+            misclassified = []
+            for j in range(self.data_amount):
+                xw = np.matmul(self.train_X[j], temp_w)
+                y_class = self.classes[self.train_Y[j][0]]
+                if y_class == -1 and xw >= 0:
+                    misclassified.append(np.array(self.train_X[j]).reshape(-1, 1))
+                elif y_class == 1 and xw <= 0:
+                    misclassified.append(-1 * np.array(self.train_X[j]).reshape(-1, 1))
+
+            calc_correct_classify = self.data_amount - len(misclassified)
+            if correct_classify < calc_correct_classify:
+                if len(misclassified) == 9:
+                    print(calc_correct_classify,correct_classify)
+                correct_classify = calc_correct_classify
+                self.W = temp_w
+            if calc_correct_classify == self.data_amount:
+                break
+
+            # for item in misclassified:
+            temp_w -= learning_rate * sum(misclassified)

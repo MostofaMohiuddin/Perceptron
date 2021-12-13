@@ -1,12 +1,13 @@
-import model
-import numpy as np
-print("Perceptron")
+from model import Model
 
-f = open("trainLinearlySeparable.txt", "r")
 
-print(f.readline())
-model1 = model.Model('trainLinearlySeparable.txt','testLinearlySeparable.txt')
-model1.basic_perceptron()
-print(np.dot(model1.train_X[1], model1.train_X[0]))
-print(model1.W)
-model1.test()
+def main():
+    train_files = ['trainLinearlySeparable.txt', 'trainLinearlyNonSeparable.txt']
+    test_files = ['testLinearlySeparable.txt', 'testLinearlyNonSeparable.txt']
+    linear_separable_model = Model(train_files[0], test_files[0])
+    linear_non_separable_model = Model(train_files[1], test_files[1])
+    linear_non_separable_model.pocket()
+    print(linear_non_separable_model.test())
+
+
+main()
